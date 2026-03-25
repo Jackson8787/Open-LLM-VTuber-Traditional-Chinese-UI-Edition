@@ -66,7 +66,7 @@ uv run run_server.py
 
 主要設定檔為：
 
-- [`conf.yaml`](/Users/mumi/文件/Open-LLM-VTuber-v1.2.1-zh/conf.yaml)
+- [`conf.yaml`](/Users/your computer/文件/Open-LLM-VTuber-v1.2.1-zh/conf.yaml)
 
 如果你想調整：
 
