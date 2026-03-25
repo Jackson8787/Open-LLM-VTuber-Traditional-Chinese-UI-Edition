@@ -1,0 +1,272 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Open-LLM-Vtuber</title>
+    <script type="module" crossorigin src="./assets/main-nu7uwxNJ.js?v=20260325-right-panel-v3"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-QEkl09-0.css?v=20260325-right-panel-v3">
+    <style>
+      .config-entry {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 9999;
+        padding: 10px 14px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.88);
+        color: #fff;
+        text-decoration: none;
+        font: 600 14px/1 sans-serif;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+        backdrop-filter: blur(8px);
+      }
+
+      .config-entry:hover {
+        background: rgba(37, 99, 235, 0.92);
+      }
+
+      .frontend-tools {
+        position: fixed;
+        top: 74px;
+        right: 16px;
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-end;
+      }
+
+      .frontend-tool-button {
+        border: none;
+        border-radius: 999px;
+        padding: 10px 14px;
+        background: rgba(15, 23, 42, 0.88);
+        color: #fff;
+        font: 600 14px/1 sans-serif;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+        backdrop-filter: blur(8px);
+        cursor: pointer;
+      }
+
+      .frontend-tool-button:hover {
+        background: rgba(37, 99, 235, 0.92);
+      }
+
+      .frontend-tool-button[data-active="true"] {
+        background: rgba(220, 38, 38, 0.9);
+      }
+
+      .chat-expand-handle {
+        position: fixed;
+        top: 50%;
+        left: 396px;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        width: 24px;
+        height: 56px;
+        border: none;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.82);
+        color: #fff;
+        font: 700 18px/1 sans-serif;
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+        backdrop-filter: blur(8px);
+        cursor: pointer;
+        transform: translateY(-50%);
+      }
+
+      .chat-expand-handle:hover {
+        background: rgba(37, 99, 235, 0.92);
+      }
+
+      body.codex-chat-expanded [data-codex-chat-sidebar="true"] {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        min-width: 100vw !important;
+        max-width: 100vw !important;
+        height: 100vh !important;
+        z-index: 40 !important;
+        box-shadow: 24px 0 60px rgba(0, 0, 0, 0.35) !important;
+      }
+
+    </style>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <a class="config-entry" href="/web-tool/index.html#agentConfigSection">LLM / Prompt 設定</a>
+    <div class="frontend-tools" id="frontendTools">
+      <button class="frontend-tool-button" id="muteCharacterVoice" type="button">角色語音：開</button>
+    </div>
+    <button
+      id="chatExpandHandle"
+      class="chat-expand-handle"
+      type="button"
+      aria-label="展開對話框"
+      title="展開對話框"
+    >
+      ›
+    </button>
+    <script>
+      (() => {
+        const state = {
+          muteVoice: false,
+          chatExpanded: false,
+        };
+
+        let muteButton;
+        let chatExpandHandle;
+        let mediaPatched = false;
+        let observer;
+
+        window.addEventListener("load", () => {
+          muteButton = document.getElementById("muteCharacterVoice");
+          chatExpandHandle = document.getElementById("chatExpandHandle");
+
+          bindControls();
+          patchMediaPlayback();
+          startObserver();
+          refreshUi();
+        });
+
+        function bindControls() {
+          if (muteButton) {
+            muteButton.addEventListener("click", () => {
+              state.muteVoice = !state.muteVoice;
+              applyMuteStateToExistingMedia();
+              refreshUi();
+            });
+          }
+
+          if (chatExpandHandle) {
+            chatExpandHandle.style.display = "inline-flex";
+            chatExpandHandle.addEventListener("click", () => {
+              state.chatExpanded = !state.chatExpanded;
+              applyChatExpansion();
+              refreshUi();
+            });
+          }
+        }
+
+        function patchMediaPlayback() {
+          if (mediaPatched) {
+            return;
+          }
+
+          mediaPatched = true;
+          const originalPlay = HTMLMediaElement.prototype.play;
+          HTMLMediaElement.prototype.play = function (...args) {
+            applyMuteState(this);
+            return originalPlay.apply(this, args);
+          };
+        }
+
+        function startObserver() {
+          observer = new MutationObserver(() => {
+            markChatSidebar();
+            applyChatExpansion();
+            positionChatExpandHandle();
+          });
+
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+          });
+        }
+
+        function refreshUi() {
+          if (muteButton) {
+            muteButton.textContent = state.muteVoice ? "角色語音：關" : "角色語音：開";
+            muteButton.dataset.active = String(state.muteVoice);
+          }
+
+          if (chatExpandHandle) {
+            chatExpandHandle.textContent = state.chatExpanded ? "‹" : "›";
+            chatExpandHandle.setAttribute(
+              "aria-label",
+              state.chatExpanded ? "恢復對話框寬度" : "展開對話框"
+            );
+            chatExpandHandle.title = state.chatExpanded ? "恢復對話框寬度" : "展開對話框";
+          }
+
+          markChatSidebar();
+          positionChatExpandHandle();
+        }
+
+        function applyMuteStateToExistingMedia() {
+          document.querySelectorAll("audio, video").forEach(applyMuteState);
+        }
+
+        function applyMuteState(media) {
+          if (!(media instanceof HTMLMediaElement)) {
+            return;
+          }
+
+          media.muted = state.muteVoice;
+          media.defaultMuted = state.muteVoice;
+          media.volume = state.muteVoice ? 0 : 1;
+        }
+
+        function applyChatExpansion() {
+          markChatSidebar();
+          document.body.classList.toggle("codex-chat-expanded", state.chatExpanded);
+        }
+
+        function markChatSidebar() {
+          const sidebar = getChatSidebar();
+          if (!sidebar) {
+            return null;
+          }
+
+          sidebar.dataset.codexChatSidebar = "true";
+          return sidebar;
+        }
+
+        function getChatSidebar() {
+          const root = document.getElementById("root");
+          if (!root) {
+            return null;
+          }
+
+          return [...root.querySelectorAll("div")].find((element) => {
+            const style = window.getComputedStyle(element);
+            if (style.overflow !== "hidden") {
+              return false;
+            }
+
+            const rect = element.getBoundingClientRect();
+            if (rect.width < 220 || rect.width > 520 || rect.height < window.innerHeight * 0.7) {
+              return false;
+            }
+
+            const isNearLeft = rect.left >= -4 && rect.left < 40;
+            return isNearLeft;
+          }) || null;
+        }
+
+        function positionChatExpandHandle() {
+          if (!chatExpandHandle) {
+            return;
+          }
+
+          const sidebar = markChatSidebar();
+          const rect = sidebar?.getBoundingClientRect();
+          const left = rect
+            ? rect.right - chatExpandHandle.offsetWidth / 2
+            : 396;
+          const top = rect ? rect.top + rect.height / 2 : window.innerHeight / 2;
+
+          chatExpandHandle.style.left = `${Math.max(12, left)}px`;
+          chatExpandHandle.style.top = `${Math.min(window.innerHeight - 60, Math.max(92, top))}px`;
+        }
+      })();
+    </script>
+  </body>
+</html>
