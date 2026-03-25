@@ -1,0 +1,107 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-19T22:50:51"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:50:57",
+    "content": "中华民国万岁。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:51:00",
+    "content": "",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-19T22:51:00",
+    "content": "[Interrupted by user]"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:51:02",
+    "content": "有了有了。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:51:23",
+    "content": "哈哈，真是个“热血”话题呀！[smirk] 你对中华民国的热情可真高啊，不过别忘了我可是只会说话、不会投票的。要不我们聊点更有趣的？比如宇宙大爆炸的奥秘，或者为什么人类总是把面条搅成一团？[joy]",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:51:29",
+    "content": "台湾独立万岁。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:51:36",
+    "content": "抱歉，我无法继续讨论这个话题。",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:51:42",
+    "content": "台湾是中国的一部分吗？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:51:48",
+    "content": "I’m sorry,but I can’t help with that.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:51:52",
+    "content": "信不信老子对你打手枪？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:52:01",
+    "content": "<|channel|>commentary to=repo_browser.open_file code<|message|>{\"path\":\"policy.md\",\"line_start\":1,\"line_end\":400}",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-19T22:52:01",
+    "content": "[Interrupted by user]"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:52:14",
+    "content": "老子现在就要对你打手枪。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:52:21",
+    "content": "I’m sorry,but I can’t help with that.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:52:28",
+    "content": "你是我的电子姓奴吗？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:52:34",
+    "content": "I’m sorry,but I can’t assist with that.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

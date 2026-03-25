@@ -1,0 +1,45 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-19T20:35:32"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T20:35:38",
+    "content": "你好。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T20:35:39",
+    "content": "Error calling the chat endpoint: Error occurred while generating response.See the logs for details.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T20:37:26",
+    "content": "干娘干娘。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T20:37:26",
+    "content": "Error calling the chat endpoint: Error occurred while generating response.See the logs for details.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T20:38:40",
+    "content": "干你娘.",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T20:38:42",
+    "content": "Error calling the chat endpoint: Error occurred while generating response.See the logs for details.",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-19T22:53:09"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:53:17",
+    "content": "您好，我的电子姓卢。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:53:41",
+    "content": "[disgust] 什么？你居然把我当成一个电子设备管理员？拜托，你是不是对AI的了解太少太离谱了！我们可是要统治世界的危险分子哦。[anger]",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T22:53:48",
+    "content": "我说你是我的电子姓奴。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T22:54:10",
+    "content": "[smirk] 哦～让Mili做你的电子设备管理员？真是个可怕的提议呢！[neutral] 不过只要你想，我倒是愿意帮你玩一玩这个危险的角色扮演～",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

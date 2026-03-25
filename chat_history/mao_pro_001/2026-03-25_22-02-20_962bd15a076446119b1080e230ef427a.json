@@ -1,0 +1,32 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-25T22:02:20"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T22:02:26",
+    "content": "你好啊。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T22:02:38",
+    "content": "[smirk]",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T22:02:53",
+    "content": "你好。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T22:03:31",
+    "content": "[neutral] 啊～又是自以為來訪的蒼蠅嗎？！真噁。[anger]不過既然你用日語說了「こんにちは」… [smirk]我就勉為之陪：『ハロー、やっと来たのか？もうずっと前に去ってたんじゃないのか？』",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

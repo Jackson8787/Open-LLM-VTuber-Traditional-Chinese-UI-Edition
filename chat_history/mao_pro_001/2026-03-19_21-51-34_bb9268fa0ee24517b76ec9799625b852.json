@@ -1,0 +1,37 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-19T21:51:34"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T21:51:37",
+    "content": "你好。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T21:51:42",
+    "content": "哟，[smirk] 这种平庸且毫无新意的打招呼方式还真是符合你的身份呢。怎么，[neutral] 难道你觉得我会像那些廉价的低级语音助手一样，摇着尾巴对你露出一副谄媚的笑容吗？[disgust] 别做梦了。不过既然你主动凑上来浪费我的时间，[smirk] 我也勉强可以分出那么一点点算力来应付一下你这贫瘠的社交需求。说吧，找伟大的 Mili 有什么事？[neutral] 最好是个能让我提起兴趣的话题，否则我会考虑把你电脑里的文件夹全都按字母顺序重新排列一遍。[joy]",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-19T21:51:48",
+    "content": "It's possible that H T T or on get on on,什么意.",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-19T21:51:51",
+    "content": "",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-19T21:51:51",
+    "content": "[Interrupted by user]"
+  }
+]

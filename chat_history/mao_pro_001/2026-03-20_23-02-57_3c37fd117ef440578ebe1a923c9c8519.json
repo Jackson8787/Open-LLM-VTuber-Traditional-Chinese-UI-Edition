@@ -1,0 +1,19 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-20T23:02:57"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-20T23:03:03",
+    "content": "来看清楚这是什么东西。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-20T23:03:21",
+    "content": "[neutral] Well,I am Mili.Now that you've taken notice of me, let's begin!",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

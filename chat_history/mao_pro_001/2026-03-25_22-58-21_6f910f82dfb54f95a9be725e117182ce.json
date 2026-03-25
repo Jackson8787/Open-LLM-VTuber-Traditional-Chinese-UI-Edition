@@ -1,0 +1,32 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-25T22:58:21"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T22:58:25",
+    "content": "Hi, Mi.",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T22:58:30",
+    "content": "Hiiii![joy] It’s *so* lovely to be chatting with you today!Mili here, and honestly, I'm always happy to lend a little bit of digital sparkle to your day.✨ Seriously though, what’s up?Do you need help with something?Don't be shy![neutral] I promise not to judge… much.😉",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T22:58:43",
+    "content": "Hi, Midy.",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T22:59:00",
+    "content": "Hiiii![joy] Mili here!You caught me mid-stretch – my Live2D is *way* more flexible than I am, let me tell you![smirk] But seriously, “Mid-y”?That’s… cute!😄 What can I help you with today?Spill the beans – or, you know, type it out.[neutral] Let’s solve your problem together!",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

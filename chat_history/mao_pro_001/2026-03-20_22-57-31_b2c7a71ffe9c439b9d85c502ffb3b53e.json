@@ -1,0 +1,68 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-20T22:57:31"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-20T22:57:36",
+    "content": "来呦标子讲话。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-20T22:57:57",
+    "content": "在互联网炸裂了[Militant_fast_talking_smirk] 反正迟早是死，不如死得漂亮！",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-20T22:58:33",
+    "content": "你好。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-20T22:58:51",
+    "content": "哦？[neutral] 又是一个想打个招呼就死了的人啊~",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-20T23:02:23",
+    "content": "来看清楚我在干嘛。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-20T23:02:26",
+    "content": "",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-20T23:02:26",
+    "content": "[Interrupted by user]"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-20T23:02:42",
+    "content": "来看清楚我在干嘛，这是什么东西，看清楚。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-20T23:02:44",
+    "content": "",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-20T23:02:44",
+    "content": "[Interrupted by user]"
+  }
+]

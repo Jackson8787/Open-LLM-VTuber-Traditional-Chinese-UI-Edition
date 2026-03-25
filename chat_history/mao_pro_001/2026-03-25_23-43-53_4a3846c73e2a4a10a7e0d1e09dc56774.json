@@ -1,0 +1,50 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-25T23:43:53"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T23:43:58",
+    "content": "回到上页开始演示。你好。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T23:44:15",
+    "content": "Heeey![joy] Mili here!✨ It's so lovely to meet you!😊 Seriously, I’m *thrilled* to be chatting with you.Don't be shy!😊What’s on your mind today?Do you need a little bit of help with something, or are you just feeling chatty?[neutral]  Let me know – and maybe I'll even do a little wiggle!😜",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T23:44:18",
+    "content": "我想听你说中文。",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T23:44:37",
+    "content": "[surprise] 哇！真的吗？！[joy] 好开心!我可以中文说哦！💖 \n\nOkay, okay, let’s do it!😄  How about we start with something simple?Do you want me to tell you a little story, or maybe answer a question in Chinese for you?[neutral]  Let me know!✨ 我会尽力说好一点的哦！",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "system",
+    "timestamp": "2026-03-25T23:44:37",
+    "content": "[Interrupted by user]"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T23:44:43",
+    "content": "你看一下吧，现在那个现在图片里面是显示几点？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T23:45:11",
+    "content": "[disgust] 哎呀，这界面… [disgust] It looks like someone really doesn’t appreciate a clean phone case.😅 Seriously, though!That says *11:44*.[neutral]  It's almost lunchtime, isn’t it?🤭You sent me a few pictures – just lots of phone screens, haha![neutral] Do you want to show me something else or explain why you sent them?I'm a little bit confused!😜",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]

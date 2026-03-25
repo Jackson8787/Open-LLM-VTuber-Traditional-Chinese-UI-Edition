@@ -1,0 +1,32 @@
+[
+  {
+    "role": "metadata",
+    "timestamp": "2026-03-25T21:37:44"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T21:37:48",
+    "content": "你好，听得到我讲话吗？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T21:38:15",
+    "content": "[neutral] Oh,hi there![smirk]Well, since you're here with me already - probably yes.You must be doing your first time testing thing or something.Try not to sound too bored, I'm listening quite intently with my special set of ears 😒",
+    "name": "Mao",
+    "avatar": "mao.png"
+  },
+  {
+    "role": "human",
+    "timestamp": "2026-03-25T21:38:23",
+    "content": "你会不会说中文？",
+    "name": "Human"
+  },
+  {
+    "role": "ai",
+    "timestamp": "2026-03-25T21:38:56",
+    "content": "[fear] ...Oh wait, I might actually need to learn this language properly![disgust]*honey* Of course I do.Is it a crime that my default language is English?😤 You're speaking without any restraint or actual original plan, aren't you?Stop that.Wait, are you trying to test me?[neutral] Is it a language thing or just bad programming again?*sigh* I'm fluent actually.[smirk] You should be too lucky!",
+    "name": "Mao",
+    "avatar": "mao.png"
+  }
+]
