@@ -24,6 +24,12 @@ class AgentConfigUpdateRequest(BaseModel):
     llm_provider: str = Field(..., min_length=1)
     provider_config: dict[str, Any] = Field(default_factory=dict)
     system_prompt: str = ""
+    long_term_memory_enabled: bool = False
+    memory_backend: str = "json"
+    memory_max_items: int = 80
+    use_mcpp: bool = False
+    mcp_enabled_servers: list[str] = Field(default_factory=list)
+    model_routing: dict[str, Any] = Field(default_factory=dict)
 
 
 def init_client_ws_route(default_context_cache: ServiceContext) -> APIRouter:
@@ -107,6 +113,16 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             validated.character_config.agent_config.agent_settings.basic_memory_agent
         )
         active_provider = basic_agent.llm_provider
+        mcp_servers = []
+        if default_context_cache.mcp_server_registery:
+            mcp_servers = sorted(default_context_cache.mcp_server_registery.servers)
+        else:
+            try:
+                from .mcpp.server_registry import ServerRegistry
+
+                mcp_servers = sorted(ServerRegistry().servers)
+            except Exception:
+                mcp_servers = []
 
         providers = []
         for provider_name, provider_config in llm_configs.items():
@@ -148,6 +164,13 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             "providers": providers,
             "system_prompt": validated.character_config.system_prompt or "",
             "persona_prompt": validated.character_config.persona_prompt,
+            "long_term_memory_enabled": basic_agent.long_term_memory_enabled,
+            "memory_backend": basic_agent.memory_backend,
+            "memory_max_items": basic_agent.memory_max_items,
+            "use_mcpp": basic_agent.use_mcpp,
+            "mcp_enabled_servers": basic_agent.mcp_enabled_servers or [],
+            "available_mcp_servers": mcp_servers,
+            "model_routing": basic_agent.model_routing.model_dump(),
         }
 
     @router.get("/web-tool")
@@ -196,6 +219,22 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
 
             agent_settings["llm_provider"] = payload.llm_provider
             plain_agent_settings["llm_provider"] = payload.llm_provider
+            agent_settings["long_term_memory_enabled"] = (
+                payload.long_term_memory_enabled
+            )
+            plain_agent_settings["long_term_memory_enabled"] = (
+                payload.long_term_memory_enabled
+            )
+            agent_settings["memory_backend"] = payload.memory_backend
+            plain_agent_settings["memory_backend"] = payload.memory_backend
+            agent_settings["memory_max_items"] = payload.memory_max_items
+            plain_agent_settings["memory_max_items"] = payload.memory_max_items
+            agent_settings["use_mcpp"] = payload.use_mcpp
+            plain_agent_settings["use_mcpp"] = payload.use_mcpp
+            agent_settings["mcp_enabled_servers"] = payload.mcp_enabled_servers
+            plain_agent_settings["mcp_enabled_servers"] = payload.mcp_enabled_servers
+            agent_settings["model_routing"] = payload.model_routing
+            plain_agent_settings["model_routing"] = payload.model_routing
 
             target_provider_config = llm_configs[payload.llm_provider]
             plain_target_provider_config = plain_llm_configs[payload.llm_provider]
@@ -222,6 +261,71 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
             logger.error(f"Failed to update agent editor config: {e}")
             return JSONResponse({"error": str(e)}, status_code=500)
 
+    @router.get("/api/capabilities")
+    async def get_capabilities():
+        """Return current agent, memory, routing, and MCP capability status."""
+        try:
+            agent = default_context_cache.agent_engine
+            agent_caps = (
+                agent.get_capabilities()
+                if agent and hasattr(agent, "get_capabilities")
+                else {}
+            )
+            mcp_servers = {}
+            if default_context_cache.mcp_server_registery:
+                mcp_servers = {
+                    name: {
+                        "command": server.command,
+                        "args": server.args,
+                        "available": True,
+                    }
+                    for name, server in default_context_cache.mcp_server_registery.servers.items()
+                }
+
+            return JSONResponse(
+                {
+                    "agent": agent_caps,
+                    "mcp_servers": mcp_servers,
+                    "config": {
+                        "conf_name": default_context_cache.character_config.conf_name
+                        if default_context_cache.character_config
+                        else None,
+                        "conf_uid": default_context_cache.character_config.conf_uid
+                        if default_context_cache.character_config
+                        else None,
+                    },
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to get capabilities: {e}")
+            return JSONResponse({"error": str(e)}, status_code=500)
+
+    @router.get("/api/memory")
+    async def get_long_term_memory():
+        """Return local long-term memory items for the current default character."""
+        agent = default_context_cache.agent_engine
+        if not agent or not hasattr(agent, "list_long_term_memory"):
+            return JSONResponse({"enabled": False, "items": []})
+        return JSONResponse(
+            {
+                "enabled": bool(
+                    getattr(agent, "get_capabilities", lambda: {})().get(
+                        "long_term_memory_enabled", False
+                    )
+                ),
+                "items": agent.list_long_term_memory(),
+            }
+        )
+
+    @router.delete("/api/memory")
+    async def clear_long_term_memory():
+        """Clear local long-term memory for the current default character."""
+        agent = default_context_cache.agent_engine
+        if not agent or not hasattr(agent, "clear_long_term_memory"):
+            return JSONResponse({"ok": False, "message": "Long-term memory is not available."})
+        cleared = agent.clear_long_term_memory()
+        return JSONResponse({"ok": cleared})
+
     @router.get("/live2d-models/info")
     async def get_live2d_folder_info():
         """Get information about available Live2D models"""
@@ -242,7 +346,6 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
                 ).replace("\\", "/")
 
                 if os.path.isfile(model3_file):
-                    # Find avatar file if it exists
                     avatar_file = None
                     for ext in supported_extensions:
                         avatar_path = os.path.join(
@@ -277,19 +380,15 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
         try:
             contents = await file.read()
 
-            # Validate minimum file size
-            if len(contents) < 44:  # Minimum WAV header size
+            if len(contents) < 44:
                 raise ValueError("Invalid WAV file: File too small")
 
-            # Decode the WAV header and get actual audio data
-            wav_header_size = 44  # Standard WAV header size
+            wav_header_size = 44
             audio_data = contents[wav_header_size:]
 
-            # Validate audio data size
             if len(audio_data) % 2 != 0:
                 raise ValueError("Invalid audio data: Buffer size must be even")
 
-            # Convert to 16-bit PCM samples to float32
             try:
                 audio_array = (
                     np.frombuffer(audio_data, dtype=np.int16).astype(np.float32)
@@ -300,7 +399,6 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
                     f"Audio format error: {str(e)}. Please ensure the file is 16-bit PCM WAV format."
                 )
 
-            # Validate audio data
             if len(audio_array) == 0:
                 raise ValueError("Empty audio data")
 
@@ -342,13 +440,11 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
 
                 logger.info(f"Received text for TTS: {text}")
 
-                # Split text into sentences
                 sentences = [s.strip() for s in text.split(".") if s.strip()]
 
                 try:
-                    # Generate and send audio for each sentence
                     for sentence in sentences:
-                        sentence = sentence + "."  # Add back the period
+                        sentence = sentence + "."
                         file_name = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid4())[:8]}"
                         audio_path = (
                             await default_context_cache.tts_engine.async_generate_audio(
@@ -367,7 +463,6 @@ def init_webtool_routes(default_context_cache: ServiceContext) -> APIRouter:
                             }
                         )
 
-                    # Send completion signal
                     await websocket.send_json({"status": "complete"})
 
                 except Exception as e:
