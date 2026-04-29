@@ -68,6 +68,21 @@ character_config:
         # 'Plus' 意味着它包含了通过 OpenAI API 调用工具的能力。
         use_mcpp: False
         mcp_enabled_servers: ["time", "ddg-search"] # 启用的 MCP 服务器
+        # 是否启用跨对话的本机长期记忆。
+        long_term_memory_enabled: False
+        # 本机长期记忆存储方式：'json' 或 'sqlite'。
+        memory_backend: 'json'
+        # 最多保留多少条本机长期记忆。
+        memory_max_items: 80
+        # 规则式模型路由。未设置专用模型时会回退到 llm_provider。
+        model_routing:
+          enabled: False
+          default_model: 'ollama_llm'
+          chat_model: 'ollama_llm'
+          vision_model: 'ollama_llm'
+          tool_model: 'ollama_llm'
+          simple_model: 'ollama_llm'
+          simple_query_max_chars: 32
 
       hume_ai_agent:
         api_key: ''
