@@ -68,6 +68,21 @@ character_config:
         # 'Plus' means that it has the ability to call tools by using OpenAI API.
         use_mcpp: True
         mcp_enabled_servers: ["time", "ddg-search"] # Enabled MCP servers
+        # Enable local cross-session long-term memory.
+        long_term_memory_enabled: False
+        # Local memory backend: 'json' or 'sqlite'.
+        memory_backend: 'json'
+        # Maximum local long-term memory items to keep.
+        memory_max_items: 80
+        # Rule-based model routing. Empty values fall back to llm_provider.
+        model_routing:
+          enabled: False
+          default_model: 'ollama_llm'
+          chat_model: 'ollama_llm'
+          vision_model: 'ollama_llm'
+          tool_model: 'ollama_llm'
+          simple_model: 'ollama_llm'
+          simple_query_max_chars: 32
 
       letta_agent:
         host: 'localhost' # Host address
