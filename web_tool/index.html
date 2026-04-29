@@ -139,6 +139,17 @@
             color: #555;
             font-size: 14px;
         }
+
+        .checkbox-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .checkbox-row input {
+            width: auto;
+        }
     </style>
 </head>
 
@@ -151,6 +162,58 @@
         <label for="llmProvider">LLM Provider</label>
         <select id="llmProvider"></select>
         <div id="providerFields" class="field-grid"></div>
+        <h3>Long-term Memory</h3>
+        <label class="checkbox-row">
+            <input id="longTermMemoryEnabled" type="checkbox" />
+            Enable local long-term memory
+        </label>
+        <label for="memoryBackend">Memory Backend</label>
+        <select id="memoryBackend">
+            <option value="json">json</option>
+            <option value="sqlite">sqlite</option>
+        </select>
+        <label for="memoryMaxItems">Memory Max Items</label>
+        <input id="memoryMaxItems" type="number" min="1" step="1" />
+        <button id="clearLongTermMemory" class="button" type="button">Clear Long-term Memory</button>
+        <h3>Model Routing</h3>
+        <label class="checkbox-row">
+            <input id="modelRoutingEnabled" type="checkbox" />
+            Enable rule-based routing
+        </label>
+        <div class="field-grid">
+            <div class="field-card">
+                <label for="routingDefaultModel">Default Model</label>
+                <select id="routingDefaultModel"></select>
+            </div>
+            <div class="field-card">
+                <label for="routingChatModel">Chat Model</label>
+                <select id="routingChatModel"></select>
+            </div>
+            <div class="field-card">
+                <label for="routingVisionModel">Vision Model</label>
+                <select id="routingVisionModel"></select>
+            </div>
+            <div class="field-card">
+                <label for="routingToolModel">Tool Model</label>
+                <select id="routingToolModel"></select>
+            </div>
+            <div class="field-card">
+                <label for="routingSimpleModel">Simple Model</label>
+                <select id="routingSimpleModel"></select>
+            </div>
+            <div class="field-card">
+                <label for="routingSimpleQueryMaxChars">Simple Query Max Chars</label>
+                <input id="routingSimpleQueryMaxChars" type="number" min="1" step="1" />
+            </div>
+        </div>
+        <h3>MCP / Tool Use</h3>
+        <label class="checkbox-row">
+            <input id="mcpEnabled" type="checkbox" />
+            Enable MCP tools
+        </label>
+        <label for="mcpEnabledServers">Enabled MCP Servers</label>
+        <input id="mcpEnabledServers" type="text" placeholder="time, ddg-search" />
+        <p id="availableMcpServers" class="section-note"></p>
         <label for="systemPrompt">Custom System Prompt</label>
         <textarea id="systemPrompt" placeholder="Leave empty to fall back to persona_prompt"></textarea>
         <button id="saveAgentConfig" class="button">Save Agent Settings</button>
