@@ -11,28 +11,80 @@ from .stateless_llm import StatelessLLMConfigs
 # ======== Configurations for different Agents ========
 
 
+LLMProviderName = Literal[
+    "stateless_llm_with_template",
+    "openai_compatible_llm",
+    "claude_llm",
+    "llama_cpp_llm",
+    "ollama_llm",
+    "lmstudio_llm",
+    "openai_llm",
+    "gemini_llm",
+    "zhipu_llm",
+    "deepseek_llm",
+    "groq_llm",
+    "mistral_llm",
+]
+
+
+class ModelRoutingConfig(I18nMixin, BaseModel):
+    """Rule-based model routing configuration."""
+
+    enabled: bool = Field(False, alias="enabled")
+    default_model: Optional[LLMProviderName] = Field(None, alias="default_model")
+    chat_model: Optional[LLMProviderName] = Field(None, alias="chat_model")
+    vision_model: Optional[LLMProviderName] = Field(None, alias="vision_model")
+    tool_model: Optional[LLMProviderName] = Field(None, alias="tool_model")
+    simple_model: Optional[LLMProviderName] = Field(None, alias="simple_model")
+    simple_query_max_chars: int = Field(32, alias="simple_query_max_chars")
+
+    DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
+        "enabled": Description(
+            en="Enable rule-based model routing",
+            zh="啟用規則式模型路由",
+        ),
+        "default_model": Description(
+            en="Fallback model provider when no route matches",
+            zh="沒有符合路由時使用的預設模型提供者",
+        ),
+        "chat_model": Description(
+            en="Model provider for normal text chat",
+            zh="一般文字聊天使用的模型提供者",
+        ),
+        "vision_model": Description(
+            en="Model provider for image, camera, or screen inputs",
+            zh="圖片、攝影機或螢幕輸入使用的模型提供者",
+        ),
+        "tool_model": Description(
+            en="Model provider for MCP/tool-use turns",
+            zh="MCP 或工具呼叫回合使用的模型提供者",
+        ),
+        "simple_model": Description(
+            en="Model provider for short, simple questions",
+            zh="短小簡單問題使用的模型提供者",
+        ),
+        "simple_query_max_chars": Description(
+            en="Maximum character count treated as a simple question",
+            zh="會被視為簡單問題的最大字數",
+        ),
+    }
+
+
 class BasicMemoryAgentConfig(I18nMixin, BaseModel):
     """Configuration for the basic memory agent."""
 
-    llm_provider: Literal[
-        "stateless_llm_with_template",
-        "openai_compatible_llm",
-        "claude_llm",
-        "llama_cpp_llm",
-        "ollama_llm",
-        "lmstudio_llm",
-        "openai_llm",
-        "gemini_llm",
-        "zhipu_llm",
-        "deepseek_llm",
-        "groq_llm",
-        "mistral_llm",
-    ] = Field(..., alias="llm_provider")
+    llm_provider: LLMProviderName = Field(..., alias="llm_provider")
 
     faster_first_response: Optional[bool] = Field(True, alias="faster_first_response")
     segment_method: Literal["regex", "pysbd"] = Field("pysbd", alias="segment_method")
     use_mcpp: Optional[bool] = Field(False, alias="use_mcpp")
     mcp_enabled_servers: Optional[List[str]] = Field([], alias="mcp_enabled_servers")
+    long_term_memory_enabled: bool = Field(False, alias="long_term_memory_enabled")
+    memory_backend: Literal["json", "sqlite"] = Field("json", alias="memory_backend")
+    memory_max_items: int = Field(80, alias="memory_max_items")
+    model_routing: ModelRoutingConfig = Field(
+        default_factory=ModelRoutingConfig, alias="model_routing"
+    )
 
     DESCRIPTIONS: ClassVar[Dict[str, Description]] = {
         "llm_provider": Description(
@@ -54,6 +106,22 @@ class BasicMemoryAgentConfig(I18nMixin, BaseModel):
         "mcp_enabled_servers": Description(
             en="List of MCP servers to enable for the agent",
             zh="為代理啟用的 MCP 伺服器清單",
+        ),
+        "long_term_memory_enabled": Description(
+            en="Whether to store and retrieve cross-session local long-term memory",
+            zh="是否儲存並檢索跨對話的本機長期記憶",
+        ),
+        "memory_backend": Description(
+            en="Local long-term memory backend: json or sqlite",
+            zh="本機長期記憶儲存方式：json 或 sqlite",
+        ),
+        "memory_max_items": Description(
+            en="Maximum number of local long-term memory items to keep",
+            zh="保留的本機長期記憶項目上限",
+        ),
+        "model_routing": Description(
+            en="Rule-based routing between configured LLM providers",
+            zh="在已設定 LLM 提供者之間進行規則式路由",
         ),
     }
 
