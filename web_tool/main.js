@@ -1,15 +1,14 @@
 const API_BASE_URL = window.location.origin;
 const recorder = new AudioRecorder();
 
-// Audio context and buffers
 let audioContext = null;
 let audioBuffers = [];
 let pendingAudioPaths = new Set();
 let currentAudioPath = null;
 let ws = null;
 let agentEditorState = null;
+const AGENT_EDITOR_CACHE_KEY = 'open-llm-vtuber:agent-editor-cache';
 
-// DOM Elements
 const startRecordingBtn = document.getElementById('startRecording');
 const stopRecordingBtn = document.getElementById('stopRecording');
 const transcriptionArea = document.getElementById('transcription');
@@ -26,10 +25,133 @@ const providerFields = document.getElementById('providerFields');
 const systemPromptInput = document.getElementById('systemPrompt');
 const saveAgentConfigBtn = document.getElementById('saveAgentConfig');
 const agentConfigStatus = document.getElementById('agentConfigStatus');
+const longTermMemoryEnabledInput = document.getElementById('longTermMemoryEnabled');
+const memoryBackendSelect = document.getElementById('memoryBackend');
+const memoryMaxItemsInput = document.getElementById('memoryMaxItems');
+const clearLongTermMemoryBtn = document.getElementById('clearLongTermMemory');
+const modelRoutingEnabledInput = document.getElementById('modelRoutingEnabled');
+const routingDefaultModelSelect = document.getElementById('routingDefaultModel');
+const routingChatModelSelect = document.getElementById('routingChatModel');
+const routingVisionModelSelect = document.getElementById('routingVisionModel');
+const routingToolModelSelect = document.getElementById('routingToolModel');
+const routingSimpleModelSelect = document.getElementById('routingSimpleModel');
+const routingSimpleQueryMaxCharsInput = document.getElementById('routingSimpleQueryMaxChars');
+const mcpEnabledInput = document.getElementById('mcpEnabled');
+const mcpEnabledServersInput = document.getElementById('mcpEnabledServers');
+const availableMcpServersText = document.getElementById('availableMcpServers');
 
 function setStatus(element, message, type = '') {
     element.textContent = message;
     element.className = type ? `status ${type}` : 'status';
+}
+
+function saveAgentEditorCache() {
+    try {
+        localStorage.setItem(AGENT_EDITOR_CACHE_KEY, JSON.stringify({
+            llm_provider: llmProviderSelect.value,
+            provider_config: collectProviderConfig(),
+            system_prompt: systemPromptInput.value,
+            long_term_memory_enabled: longTermMemoryEnabledInput.checked,
+            memory_backend: memoryBackendSelect.value,
+            memory_max_items: Number.parseInt(memoryMaxItemsInput.value, 10) || 80,
+            use_mcpp: mcpEnabledInput.checked,
+            mcp_enabled_servers: parseServerList(mcpEnabledServersInput.value),
+            model_routing: collectModelRouting()
+        }));
+    } catch (error) {
+        console.warn('Failed to save agent editor cache:', error);
+    }
+}
+
+function loadAgentEditorCache() {
+    try {
+        const raw = localStorage.getItem(AGENT_EDITOR_CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+        console.warn('Failed to load agent editor cache:', error);
+        return null;
+    }
+}
+
+function applyAgentEditorCache(cache) {
+    if (!cache || !agentEditorState) {
+        return;
+    }
+
+    if (cache.llm_provider && agentEditorState.providers.some(provider => provider.name === cache.llm_provider)) {
+        llmProviderSelect.value = cache.llm_provider;
+        renderProviderFields(cache.llm_provider);
+    }
+
+    if (cache.system_prompt !== undefined) {
+        systemPromptInput.value = cache.system_prompt ?? '';
+    }
+
+    if (cache.long_term_memory_enabled !== undefined) {
+        longTermMemoryEnabledInput.checked = Boolean(cache.long_term_memory_enabled);
+    }
+    if (cache.memory_backend) {
+        memoryBackendSelect.value = cache.memory_backend;
+    }
+    if (cache.memory_max_items !== undefined) {
+        memoryMaxItemsInput.value = cache.memory_max_items;
+    }
+    if (cache.use_mcpp !== undefined) {
+        mcpEnabledInput.checked = Boolean(cache.use_mcpp);
+    }
+    if (cache.mcp_enabled_servers) {
+        mcpEnabledServersInput.value = cache.mcp_enabled_servers.join(', ');
+    }
+    if (cache.model_routing) {
+        applyModelRouting(cache.model_routing);
+    }
+
+    if (!cache.provider_config) {
+        return;
+    }
+
+    providerFields.querySelectorAll('[data-field-key]').forEach(input => {
+        const key = input.dataset.fieldKey;
+        if (!(key in cache.provider_config)) {
+            return;
+        }
+
+        const value = cache.provider_config[key];
+        input.value = value ?? '';
+    });
+}
+
+function renderRoutingProviderSelects() {
+    if (!agentEditorState) {
+        return;
+    }
+
+    const selects = [
+        routingDefaultModelSelect,
+        routingChatModelSelect,
+        routingVisionModelSelect,
+        routingToolModelSelect,
+        routingSimpleModelSelect
+    ];
+    selects.forEach(select => {
+        select.innerHTML = '<option value="">Fallback to active provider</option>';
+        agentEditorState.providers.forEach(provider => {
+            const option = document.createElement('option');
+            option.value = provider.name;
+            option.textContent = provider.name;
+            select.appendChild(option);
+        });
+    });
+}
+
+function applyModelRouting(routing = {}) {
+    modelRoutingEnabledInput.checked = Boolean(routing.enabled);
+    routingDefaultModelSelect.value = routing.default_model || '';
+    routingChatModelSelect.value = routing.chat_model || '';
+    routingVisionModelSelect.value = routing.vision_model || '';
+    routingToolModelSelect.value = routing.tool_model || '';
+    routingSimpleModelSelect.value = routing.simple_model || '';
+    routingSimpleQueryMaxCharsInput.value = routing.simple_query_max_chars || 32;
 }
 
 function renderProviderFields(providerName) {
@@ -96,11 +218,39 @@ async function loadAgentEditorConfig() {
 
         llmProviderSelect.value = agentEditorState.llm_provider;
         systemPromptInput.value = agentEditorState.system_prompt || '';
+        longTermMemoryEnabledInput.checked = Boolean(agentEditorState.long_term_memory_enabled);
+        memoryBackendSelect.value = agentEditorState.memory_backend || 'json';
+        memoryMaxItemsInput.value = agentEditorState.memory_max_items || 80;
+        mcpEnabledInput.checked = Boolean(agentEditorState.use_mcpp);
+        mcpEnabledServersInput.value = (agentEditorState.mcp_enabled_servers || []).join(', ');
+        availableMcpServersText.textContent = `Available MCP servers: ${(agentEditorState.available_mcp_servers || []).join(', ') || 'none'}`;
+        renderRoutingProviderSelects();
+        applyModelRouting(agentEditorState.model_routing || {});
         renderProviderFields(agentEditorState.llm_provider);
+        applyAgentEditorCache(loadAgentEditorCache());
         setStatus(agentConfigStatus, 'Agent settings loaded.', 'success');
     } catch (error) {
         setStatus(agentConfigStatus, `Error: ${error.message}`, 'error');
     }
+}
+
+function parseServerList(value) {
+    return String(value || '')
+        .split(',')
+        .map(item => item.trim())
+        .filter(Boolean);
+}
+
+function collectModelRouting() {
+    return {
+        enabled: modelRoutingEnabledInput.checked,
+        default_model: routingDefaultModelSelect.value || null,
+        chat_model: routingChatModelSelect.value || null,
+        vision_model: routingVisionModelSelect.value || null,
+        tool_model: routingToolModelSelect.value || null,
+        simple_model: routingSimpleModelSelect.value || null,
+        simple_query_max_chars: Number.parseInt(routingSimpleQueryMaxCharsInput.value, 10) || 32
+    };
 }
 
 function collectProviderConfig() {
@@ -128,6 +278,37 @@ function collectProviderConfig() {
 
 llmProviderSelect.addEventListener('change', () => {
     renderProviderFields(llmProviderSelect.value);
+    saveAgentEditorCache();
+});
+
+systemPromptInput.addEventListener('input', () => {
+    saveAgentEditorCache();
+});
+
+providerFields.addEventListener('input', () => {
+    saveAgentEditorCache();
+});
+
+providerFields.addEventListener('change', () => {
+    saveAgentEditorCache();
+});
+
+[
+    longTermMemoryEnabledInput,
+    memoryBackendSelect,
+    memoryMaxItemsInput,
+    modelRoutingEnabledInput,
+    routingDefaultModelSelect,
+    routingChatModelSelect,
+    routingVisionModelSelect,
+    routingToolModelSelect,
+    routingSimpleModelSelect,
+    routingSimpleQueryMaxCharsInput,
+    mcpEnabledInput,
+    mcpEnabledServersInput
+].forEach(element => {
+    element.addEventListener('input', saveAgentEditorCache);
+    element.addEventListener('change', saveAgentEditorCache);
 });
 
 saveAgentConfigBtn.addEventListener('click', async () => {
@@ -143,7 +324,13 @@ saveAgentConfigBtn.addEventListener('click', async () => {
             body: JSON.stringify({
                 llm_provider: llmProviderSelect.value,
                 provider_config: collectProviderConfig(),
-                system_prompt: systemPromptInput.value
+                system_prompt: systemPromptInput.value,
+                long_term_memory_enabled: longTermMemoryEnabledInput.checked,
+                memory_backend: memoryBackendSelect.value,
+                memory_max_items: Number.parseInt(memoryMaxItemsInput.value, 10) || 80,
+                use_mcpp: mcpEnabledInput.checked,
+                mcp_enabled_servers: parseServerList(mcpEnabledServersInput.value),
+                model_routing: collectModelRouting()
             })
         });
 
@@ -153,7 +340,10 @@ saveAgentConfigBtn.addEventListener('click', async () => {
         }
 
         agentEditorState = data;
+        renderRoutingProviderSelects();
+        applyModelRouting(agentEditorState.model_routing || {});
         renderProviderFields(agentEditorState.llm_provider);
+        saveAgentEditorCache();
         setStatus(agentConfigStatus, 'Agent settings saved. New sessions will use the updated LLM and prompt.', 'success');
     } catch (error) {
         setStatus(agentConfigStatus, `Error: ${error.message}`, 'error');
@@ -162,7 +352,25 @@ saveAgentConfigBtn.addEventListener('click', async () => {
     }
 });
 
-// File upload handler with format conversion
+clearLongTermMemoryBtn.addEventListener('click', async () => {
+    try {
+        clearLongTermMemoryBtn.disabled = true;
+        setStatus(agentConfigStatus, 'Clearing long-term memory...');
+        const response = await fetch(`${API_BASE_URL}/api/memory`, {
+            method: 'DELETE'
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+            throw new Error(data.message || 'Long-term memory is not enabled');
+        }
+        setStatus(agentConfigStatus, 'Long-term memory cleared.', 'success');
+    } catch (error) {
+        setStatus(agentConfigStatus, `Error: ${error.message}`, 'error');
+    } finally {
+        clearLongTermMemoryBtn.disabled = false;
+    }
+});
+
 uploadAudioBtn.addEventListener('click', async () => {
     const file = audioFileInput.files[0];
     if (!file) {
@@ -175,12 +383,10 @@ uploadAudioBtn.addEventListener('click', async () => {
         asrStatus.textContent = 'Processing audio file...';
         asrStatus.className = 'status';
 
-        // Convert audio to WAV format
         const audioContext = new (window.AudioContext || window.webkitAudioContext)();
         const arrayBuffer = await file.arrayBuffer();
         const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
         
-        // Create WAV file
         const wavBuffer = await audioBufferToWav(audioBuffer);
         const wavBlob = new Blob([wavBuffer], { type: 'audio/wav' });
 
@@ -199,7 +405,6 @@ uploadAudioBtn.addEventListener('click', async () => {
         asrStatus.textContent = 'Transcription complete!';
         asrStatus.className = 'status success';
         
-        // Clean up
         audioContext.close();
     } catch (error) {
         asrStatus.textContent = 'Error: ' + error.message;
@@ -207,7 +412,6 @@ uploadAudioBtn.addEventListener('click', async () => {
     }
 });
 
-// Recording handlers
 startRecordingBtn.addEventListener('click', async () => {
     try {
         asrStatus.textContent = 'Starting recording...';
@@ -229,7 +433,6 @@ stopRecordingBtn.addEventListener('click', async () => {
         stopRecordingBtn.disabled = true;
         asrStatus.textContent = 'Processing audio...';
 
-        // Send to ASR endpoint
         const formData = new FormData();
         formData.append('file', audioBlob);
 
@@ -252,7 +455,6 @@ stopRecordingBtn.addEventListener('click', async () => {
     }
 });
 
-// TTS handlers
 function connectWebSocket() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     ws = new WebSocket(`${wsProtocol}://${window.location.host}/tts-ws`);
@@ -263,7 +465,6 @@ function connectWebSocket() {
         ttsStatus.textContent = 'Connected to TTS service';
         ttsStatus.className = 'status success';
         
-        // Initialize AudioContext if needed
         if (!audioContext) {
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
         } else if (audioContext.state === 'suspended') {
@@ -286,7 +487,6 @@ function connectWebSocket() {
                     await audioContext.resume();
                 }
                 
-                // Use retry mechanism for fetching audio
                 const audioResponse = await fetchWithRetry(`${API_BASE_URL}/cache/${audioPath}`);
                 const arrayBuffer = await audioResponse.arrayBuffer();
                 
@@ -304,30 +504,26 @@ function connectWebSocket() {
                 pendingAudioPaths.clear();
             }
         } else if (response.status === 'complete') {
-            // Wait for any pending audio loads to complete
             if (pendingAudioPaths.size > 0) {
                 ttsStatus.textContent = 'Finalizing audio...';
                 await new Promise(resolve => setTimeout(resolve, 500));
             }
 
             try {
-                // Combine all audio buffers
                 const targetSampleRate = 16000;
                 const totalLength = audioBuffers.reduce((acc, buffer) => {
-                    // Calculate resampled length if needed
                     const ratio = targetSampleRate / buffer.sampleRate;
                     return acc + Math.ceil(buffer.length * ratio);
                 }, 0);
                 
                 const combinedBuffer = audioContext.createBuffer(
-                    1,  // mono
+                    1,
                     totalLength,
                     targetSampleRate
                 );
                 
                 let offset = 0;
                 for (const buffer of audioBuffers) {
-                    // Resample if needed
                     let channelData = buffer.getChannelData(0);
                     if (buffer.sampleRate !== targetSampleRate) {
                         channelData = await resampleAudio(channelData, buffer.sampleRate, targetSampleRate);
@@ -336,16 +532,12 @@ function connectWebSocket() {
                     offset += channelData.length;
                 }
                 
-                // Convert to WAV for download
                 const wavBlob = new Blob([await audioBufferToWav(combinedBuffer)], { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(wavBlob);
                 
-                // Update audio player
                 audioPlayer.src = audioUrl;
                 audioPlayer.load();
                 downloadAudioBtn.disabled = false;
-                
-                // Store for download
                 currentAudioPath = audioUrl;
                 
                 ttsStatus.textContent = 'Audio generated successfully!';
@@ -355,7 +547,6 @@ function connectWebSocket() {
                 ttsStatus.textContent = 'Error combining audio: ' + error.message;
                 ttsStatus.className = 'status error';
             } finally {
-                // Clear buffers
                 audioBuffers = [];
                 pendingAudioPaths.clear();
             }
@@ -373,7 +564,6 @@ function connectWebSocket() {
         ttsStatus.textContent = 'Disconnected. Trying to reconnect...';
         ttsStatus.className = 'status error';
         
-        // Clean up any pending audio resources
         audioBuffers = [];
         pendingAudioPaths.clear();
         if (currentAudioPath) {
@@ -389,7 +579,6 @@ function connectWebSocket() {
         ttsStatus.textContent = 'Connection error. Retrying...';
         ttsStatus.className = 'status error';
         
-        // Clean up audio resources on error
         audioBuffers = [];
         pendingAudioPaths.clear();
         if (currentAudioPath) {
@@ -399,17 +588,15 @@ function connectWebSocket() {
     };
 }
 
-// Convert AudioBuffer to WAV with specific format requirements
 async function audioBufferToWav(buffer) {
-    // Resample to 16kHz if needed
     let audioData = buffer.getChannelData(0);
     if (buffer.sampleRate !== 16000) {
         audioData = await resampleAudio(audioData, buffer.sampleRate, 16000);
     }
     
-    const numChannels = 1; // Mono
+    const numChannels = 1;
     const sampleRate = 16000;
-    const format = 1; // PCM
+    const format = 1;
     const bitDepth = 16;
     
     const dataLength = audioData.length * (bitDepth / 8);
@@ -419,7 +606,6 @@ async function audioBufferToWav(buffer) {
     const arrayBuffer = new ArrayBuffer(totalLength);
     const view = new DataView(arrayBuffer);
     
-    // Write WAV header
     writeString(view, 0, 'RIFF');
     view.setUint32(4, totalLength - 8, true);
     writeString(view, 8, 'WAVE');
@@ -434,7 +620,6 @@ async function audioBufferToWav(buffer) {
     writeString(view, 36, 'data');
     view.setUint32(40, dataLength, true);
     
-    // Write audio data
     floatTo16BitPCM(view, 44, audioData);
     
     return arrayBuffer;
@@ -503,7 +688,6 @@ downloadAudioBtn.addEventListener('click', () => {
     }
 });
 
-// Clean up resources when leaving the page
 window.addEventListener('beforeunload', () => {
     if (audioContext) {
         audioContext.close();
@@ -511,16 +695,13 @@ window.addEventListener('beforeunload', () => {
     if (ws) {
         ws.close();
     }
-    // Clean up any blob URLs
     if (currentAudioPath) {
         URL.revokeObjectURL(currentAudioPath);
     }
-    // Clear any pending audio buffers
     audioBuffers = [];
     pendingAudioPaths.clear();
 });
 
-// Initialize WebSocket connection
 connectWebSocket();
 loadAgentEditorConfig();
 
