@@ -1,7 +1,7 @@
-# Open-LLM-VTuber-Traditional-Chinese-UI-Edition
+# Open-LLM-VTuber-Traditional-Chinese-UI-Edition v2
 Traditional Chinese fork of Open-LLM-VTuber with frontend config tools and chat UI enhancements.
 
-# Open-LLM-VTuber 繁體中文版前端增強版
+# Open-LLM-VTuber 繁體中文版前端增強版 v2
 
 這是一個基於 **[Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)** 修改的繁體中文 fork，主要目標是讓整體介面更適合繁體中文使用者，並補上較方便的前端設定功能。
 
@@ -10,6 +10,7 @@ Traditional Chinese fork of Open-LLM-VTuber with frontend config tools and chat 
 - 將專案中主要可見的簡體中文介面與提示改為繁體中文
 - 新增前端設定入口，可直接調整 LLM / Prompt 相關內容
 - 可在前端切換部分常用設定，而不必手動來回編輯設定檔
+- 加入本機長期記憶、規則式模型路由、MCP/tool 狀態與多模態路由設定
 - 保留原本 Open-LLM-VTuber 的核心架構與使用方式
 
 ## 專案定位
@@ -39,12 +40,26 @@ Traditional Chinese fork of Open-LLM-VTuber with frontend config tools and chat 
 - LLM provider
 - 模型與常用 API 參數
 - system prompt
+- 長期記憶
+- 模型路由
+- MCP/tool use
 
-這些內容會寫回 [`conf.yaml`](/Users/'your computer'/文件/Open-LLM-VTuber-v1.2.1-zh/conf.yaml)。
+這些內容會寫回 `conf.yaml`。
 
 ### 3. 角色語音前端開關
 
 目前前端頁面已加入 `角色語音：開 / 關` 按鈕，可以在不改後端設定的情況下，直接控制前端是否播放角色語音。
+
+### 4. 長期記憶、多模態路由與 MCP 設定
+
+設定頁已加入進階 Agent 設定：
+
+- 本機長期記憶：可用 JSON 或 SQLite 儲存跨對話記憶，不需要額外向量資料庫。
+- 規則式模型路由：可分別指定一般聊天、圖片/螢幕輸入、MCP/tool use 使用的 LLM provider。
+- MCP / Tool use：可從設定頁開關 MCP，並設定啟用的 MCP servers。
+- 能力狀態：主畫面會顯示目前記憶、路由與 MCP 狀態。
+
+目前 `mem0_agent` 沒有啟用；這個 fork 第一版長期記憶使用內建的本機 `basic_memory_agent` 擴充。
 
 ## 使用方式
 
@@ -66,7 +81,7 @@ uv run run_server.py
 
 主要設定檔為：
 
-- [`conf.yaml`](/Users/your computer/文件/Open-LLM-VTuber-v1.2.1-zh/conf.yaml)
+- `conf.yaml`
 
 如果你想調整：
 
@@ -94,7 +109,7 @@ uv run run_server.py
 
 - GitHub: [Open-LLM-VTuber / Open-LLM-VTuber](https://github.com/Open-LLM-VTuber/Open-LLM-VTuber)
 
-原作者與貢獻者完成了整體架構、核心功能、模型整合、Live2D、語音互動與前後端系統。  
+原作者與貢獻者完成了整體架構、核心功能、模型整合、Live2D、語音互動與前後端系統。
 這個 fork 主要是針對：
 
 - 繁體中文介面
@@ -113,7 +128,7 @@ uv run run_server.py
 
 ## License 與第三方資源
 
-本專案沿用原專案的授權與第三方資源使用前提。  
+本專案沿用原專案的授權與第三方資源使用前提。
 特別是 Live2D 相關模型、素材與第三方模型服務，請依各自授權條款使用。
 
 若你要商業使用，請務必自行確認：
@@ -125,5 +140,5 @@ uv run run_server.py
 
 ## 備註
 
-這個 fork 目前仍然是實用導向的調整版本，README 會隨功能再持續更新。  
+這個 fork 目前仍然是實用導向的調整版本，README 會隨功能再持續更新。
 如果後續又加入新的前端控制、設定頁或中文化範圍，我會再把文件補完整。
