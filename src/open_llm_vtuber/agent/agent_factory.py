@@ -9,10 +9,31 @@ from .agents.letta_agent import LettaAgent
 
 from ..mcpp.tool_manager import ToolManager
 from ..mcpp.tool_executor import ToolExecutor
+from ..memory import MemoryStore
 from typing import Optional
 
 
 class AgentFactory:
+    @staticmethod
+    def _create_stateless_llm(
+        provider_name: str,
+        llm_configs: dict,
+        system_prompt: str,
+    ):
+        llm_config = dict(llm_configs.get(provider_name) or {})
+        if not llm_config:
+            raise ValueError(f"Configuration not found for LLM provider: {provider_name}")
+
+        interrupt_method: Literal["system", "user"] = llm_config.pop(
+            "interrupt_method", "user"
+        )
+        llm = StatelessLLMFactory.create_llm(
+            llm_provider=provider_name,
+            system_prompt=system_prompt,
+            **llm_config,
+        )
+        return llm, interrupt_method
+
     @staticmethod
     def create_agent(
         conversation_agent_choice: str,
@@ -44,21 +65,31 @@ class AgentFactory:
             if not llm_provider:
                 raise ValueError("LLM provider not specified for basic memory agent")
 
-            # Get the LLM config for this provider
-            llm_config: dict = llm_configs.get(llm_provider)
-            interrupt_method: Literal["system", "user"] = llm_config.pop(
-                "interrupt_method", "user"
+            llm, interrupt_method = AgentFactory._create_stateless_llm(
+                llm_provider, llm_configs, system_prompt
             )
 
-            if not llm_config:
-                raise ValueError(
-                    f"Configuration not found for LLM provider: {llm_provider}"
-                )
-
-            # Create the stateless LLM
-            llm = StatelessLLMFactory.create_llm(
-                llm_provider=llm_provider, system_prompt=system_prompt, **llm_config
-            )
+            routing_settings = basic_memory_settings.get("model_routing") or {}
+            llms_by_provider = {llm_provider: llm}
+            if routing_settings.get("enabled"):
+                route_providers = [
+                    routing_settings.get("default_model"),
+                    routing_settings.get("chat_model"),
+                    routing_settings.get("vision_model"),
+                    routing_settings.get("tool_model"),
+                ]
+                for provider_name in [name for name in route_providers if name]:
+                    if provider_name in llms_by_provider:
+                        continue
+                    try:
+                        route_llm, _ = AgentFactory._create_stateless_llm(
+                            provider_name, llm_configs, system_prompt
+                        )
+                        llms_by_provider[provider_name] = route_llm
+                    except Exception as e:
+                        logger.warning(
+                            f"Failed to initialize routed LLM provider '{provider_name}': {e}. It will fall back to {llm_provider}."
+                        )
 
             tool_prompts = kwargs.get("system_config", {}).get("tool_prompts", {})
 
@@ -66,10 +97,20 @@ class AgentFactory:
             tool_manager: Optional[ToolManager] = kwargs.get("tool_manager")
             tool_executor: Optional[ToolExecutor] = kwargs.get("tool_executor")
             mcp_prompt_string: str = kwargs.get("mcp_prompt_string", "")
+            memory_store = None
+            if basic_memory_settings.get("long_term_memory_enabled", False):
+                memory_store = MemoryStore(
+                    conf_uid=kwargs.get("conf_uid", "default"),
+                    backend=basic_memory_settings.get("memory_backend", "json"),
+                    max_items=basic_memory_settings.get("memory_max_items", 80),
+                )
 
             # Create the agent with the LLM and live2d_model
             return BasicMemoryAgent(
                 llm=llm,
+                llm_provider=llm_provider,
+                llms_by_provider=llms_by_provider,
+                model_routing=routing_settings,
                 system=system_prompt,
                 live2d_model=live2d_model,
                 tts_preprocessor_config=tts_preprocessor_config,
@@ -83,28 +124,12 @@ class AgentFactory:
                 tool_manager=tool_manager,
                 tool_executor=tool_executor,
                 mcp_prompt_string=mcp_prompt_string,
+                memory_store=memory_store,
             )
 
         elif conversation_agent_choice == "mem0_agent":
-            from .agents.mem0_llm import LLM as Mem0LLM
-
-            mem0_settings = agent_settings.get("mem0_agent", {})
-            if not mem0_settings:
-                raise ValueError("Mem0 agent settings not found")
-
-            # Validate required settings
-            required_fields = ["base_url", "model", "mem0_config"]
-            for field in required_fields:
-                if field not in mem0_settings:
-                    raise ValueError(
-                        f"Missing required field '{field}' in mem0_agent settings"
-                    )
-
-            return Mem0LLM(
-                user_id=kwargs.get("user_id", "default"),
-                system=system_prompt,
-                live2d_model=live2d_model,
-                **mem0_settings,
+            raise ValueError(
+                "mem0_agent is not enabled in this fork yet. Use basic_memory_agent with long_term_memory_enabled instead."
             )
 
         elif conversation_agent_choice == "hume_ai_agent":
