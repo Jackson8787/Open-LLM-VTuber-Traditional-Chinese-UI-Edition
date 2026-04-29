@@ -8,6 +8,7 @@ from typing import (
     Union,
     Optional,
 )
+import re
 from loguru import logger
 from .agent_interface import AgentInterface
 from ..output_types import SentenceOutput, DisplayText
@@ -28,6 +29,7 @@ from ...mcpp.tool_manager import ToolManager
 from ...mcpp.json_detector import StreamJSONDetector
 from ...mcpp.types import ToolCallObject
 from ...mcpp.tool_executor import ToolExecutor
+from ...memory import MemoryStore
 
 
 class BasicMemoryAgent(AgentInterface):
@@ -40,6 +42,9 @@ class BasicMemoryAgent(AgentInterface):
         llm: StatelessLLMInterface,
         system: str,
         live2d_model,
+        llm_provider: str = "",
+        llms_by_provider: Optional[Dict[str, StatelessLLMInterface]] = None,
+        model_routing: Optional[Dict[str, Any]] = None,
         tts_preprocessor_config: TTSPreprocessorConfig = None,
         faster_first_response: bool = True,
         segment_method: str = "pysbd",
@@ -49,6 +54,7 @@ class BasicMemoryAgent(AgentInterface):
         tool_manager: Optional[ToolManager] = None,
         tool_executor: Optional[ToolExecutor] = None,
         mcp_prompt_string: str = "",
+        memory_store: Optional[MemoryStore] = None,
     ):
         """Initialize agent with LLM and configuration."""
         super().__init__()
@@ -62,6 +68,12 @@ class BasicMemoryAgent(AgentInterface):
         self._tool_prompts = tool_prompts or {}
         self._interrupt_handled = False
         self.prompt_mode_flag = False
+        self._llm_provider = llm_provider
+        self._llms_by_provider = llms_by_provider or {llm_provider: llm}
+        self._model_routing = model_routing or {}
+        self._active_llm_provider = llm_provider
+        self._active_route_reason = "default"
+        self._memory_store = memory_store
 
         self._tool_manager = tool_manager
         self._tool_executor = tool_executor
@@ -102,7 +114,6 @@ class BasicMemoryAgent(AgentInterface):
             [
                 self._tool_manager,
                 self._tool_executor,
-                self._json_detector,
             ]
         ):
             logger.warning(
@@ -115,6 +126,122 @@ class BasicMemoryAgent(AgentInterface):
         """Set the LLM for chat completion."""
         self._llm = llm
         self.chat = self._chat_function_factory()
+
+    def _is_simple_query(self, input_data: BatchInput) -> bool:
+        routing = self._model_routing or {}
+        if not routing.get("simple_model"):
+            return False
+        if input_data.images:
+            return False
+        query = self._to_text_prompt(input_data).strip()
+        if not query:
+            return False
+
+        compact_query = re.sub(r"\s+", " ", query)
+        if "\n" in compact_query:
+            return False
+        if len(compact_query) > int(routing.get("simple_query_max_chars", 32) or 32):
+            return False
+
+        complex_markers = [
+            "為什麼",
+            "分析",
+            "比較",
+            "步驟",
+            "詳細",
+            "解釋",
+            "證明",
+            "總結",
+            "search",
+            "搜尋",
+            "查詢",
+            "工具",
+            "mcp",
+            "how",
+            "why",
+            "compare",
+            "analyze",
+            "explain",
+        ]
+        if any(marker.lower() in compact_query.lower() for marker in complex_markers):
+            return False
+
+        if compact_query.count("，") + compact_query.count(",") >= 2:
+            return False
+
+        return True
+
+    def _select_llm_provider(self, input_data: BatchInput) -> tuple[str, str]:
+        routing = self._model_routing or {}
+        fallback = (
+            routing.get("default_model")
+            or routing.get("chat_model")
+            or self._llm_provider
+        )
+        if not routing.get("enabled"):
+            return self._llm_provider, "routing_disabled"
+
+        if input_data.images and routing.get("vision_model"):
+            selected = routing["vision_model"]
+            reason = "vision"
+        elif self._use_mcpp and self._tool_manager and routing.get("tool_model"):
+            selected = routing["tool_model"]
+            reason = "tool"
+        elif self._is_simple_query(input_data):
+            selected = routing["simple_model"]
+            reason = "simple"
+        elif routing.get("chat_model"):
+            selected = routing["chat_model"]
+            reason = "chat"
+        else:
+            selected = fallback
+            reason = "fallback"
+
+        if selected not in self._llms_by_provider:
+            logger.warning(
+                f"Routed LLM provider '{selected}' is not initialized. Falling back to '{self._llm_provider}'."
+            )
+            return self._llm_provider, "provider_fallback"
+        return selected, reason
+
+    def _activate_routed_llm(self, input_data: BatchInput) -> None:
+        selected_provider, reason = self._select_llm_provider(input_data)
+        self._llm = self._llms_by_provider.get(selected_provider, self._llm)
+        self._active_llm_provider = selected_provider
+        self._active_route_reason = reason
+        if selected_provider != self._llm_provider:
+            logger.info(
+                f"Routed conversation turn to LLM provider: {selected_provider} (reason: {reason})"
+            )
+
+    def get_capabilities(self) -> Dict[str, Any]:
+        routing = self._model_routing or {}
+        return {
+            "long_term_memory_enabled": self._memory_store is not None,
+            "memory_backend": getattr(self._memory_store, "backend", None),
+            "memory_items": len(self._memory_store.list_memories())
+            if self._memory_store
+            else 0,
+            "model_routing_enabled": bool(routing.get("enabled")),
+            "active_provider": self._active_llm_provider,
+            "active_route_reason": self._active_route_reason,
+            "default_provider": self._llm_provider,
+            "routing": routing,
+            "mcp_enabled": self._use_mcpp,
+            "mcp_tool_count": len(self._formatted_tools_openai)
+            or len(self._formatted_tools_claude),
+        }
+
+    def list_long_term_memory(self) -> List[Dict[str, Any]]:
+        if not self._memory_store:
+            return []
+        return self._memory_store.list_memories()
+
+    def clear_long_term_memory(self) -> bool:
+        if not self._memory_store:
+            return False
+        self._memory_store.clear()
+        return True
 
     def set_system(self, system: str):
         """Set the system prompt."""
@@ -287,10 +414,51 @@ class BasicMemoryAgent(AgentInterface):
 
         return messages
 
+    def _effective_system_prompt(self, input_data: BatchInput) -> str:
+        if not self._memory_store:
+            return self._system
+
+        query = self._to_text_prompt(input_data)
+        memories = self._memory_store.search(query, limit=6)
+        if not memories:
+            return self._system
+
+        memory_lines = "\n".join(
+            f"- {item.get('content', '')}" for item in memories if item.get("content")
+        )
+        if not memory_lines:
+            return self._system
+
+        return (
+            f"{self._system}\n\n"
+            "[Long-term memory]\n"
+            "The following notes may be relevant to this user. Use them only when helpful and do not mention this memory block explicitly.\n"
+            f"{memory_lines}"
+        )
+
+    def _remember_long_term(
+        self,
+        input_data: BatchInput,
+        assistant_text: str,
+    ) -> None:
+        if not self._memory_store:
+            return
+        if input_data.metadata and input_data.metadata.get("skip_memory", False):
+            return
+
+        user_text = self._to_text_prompt(input_data)
+        self._memory_store.remember_turn(
+            user_text=user_text,
+            assistant_text=assistant_text,
+            metadata={"provider": self._active_llm_provider},
+        )
+
     async def _claude_tool_interaction_loop(
         self,
         initial_messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
+        system_prompt: str,
+        input_data: BatchInput,
     ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
         """Handle Claude interaction loop with tool support."""
         messages = initial_messages.copy()
@@ -299,7 +467,7 @@ class BasicMemoryAgent(AgentInterface):
         current_assistant_message_content = []
 
         while True:
-            stream = self._llm.chat_completion(messages, self._system, tools=tools)
+            stream = self._llm.chat_completion(messages, system_prompt, tools=tools)
             pending_tool_calls.clear()
             current_assistant_message_content.clear()
 
@@ -331,9 +499,6 @@ class BasicMemoryAgent(AgentInterface):
                             "input": tool_call_data["input"],
                         }
                     )
-                # elif event["type"] == "message_delta":
-                #     if event["data"]["delta"].get("stop_reason"):
-                #         stop_reason = event["data"]["delta"].get("stop_reason")
                 elif event["type"] == "message_stop":
                     break
                 elif event["type"] == "error":
@@ -393,36 +558,39 @@ class BasicMemoryAgent(AgentInterface):
                 if tool_results_for_llm:
                     messages.append({"role": "user", "content": tool_results_for_llm})
 
-                # stop_reason = None
                 continue
             else:
                 if current_turn_text:
                     self._add_message(current_turn_text, "assistant")
+                    self._remember_long_term(input_data, current_turn_text)
                 return
 
     async def _openai_tool_interaction_loop(
         self,
         initial_messages: List[Dict[str, Any]],
         tools: List[Dict[str, Any]],
+        system_prompt: str,
+        input_data: BatchInput,
     ) -> AsyncIterator[Union[str, Dict[str, Any]]]:
         """Handle OpenAI interaction with tool support."""
         messages = initial_messages.copy()
         current_turn_text = ""
+        total_response_text = ""
         pending_tool_calls: Union[List[ToolCallObject], List[Dict[str, Any]]] = []
-        current_system_prompt = self._system
+        current_system_prompt = system_prompt
 
         while True:
             if self.prompt_mode_flag:
                 if self._mcp_prompt_string:
                     current_system_prompt = (
-                        f"{self._system}\n\n{self._mcp_prompt_string}"
+                        f"{system_prompt}\n\n{self._mcp_prompt_string}"
                     )
                 else:
                     logger.warning("Prompt mode active but mcp_prompt_string is empty!")
-                    current_system_prompt = self._system
+                    current_system_prompt = system_prompt
                 tools_for_api = None
             else:
-                current_system_prompt = self._system
+                current_system_prompt = system_prompt
                 tools_for_api = tools
 
             stream = self._llm.chat_completion(
@@ -438,6 +606,7 @@ class BasicMemoryAgent(AgentInterface):
                 if self.prompt_mode_flag:
                     if isinstance(event, str):
                         current_turn_text += event
+                        total_response_text += event
                         if self._json_detector:
                             potential_json = self._json_detector.process_chunk(event)
                             if potential_json:
@@ -460,6 +629,7 @@ class BasicMemoryAgent(AgentInterface):
                 else:
                     if isinstance(event, str):
                         current_turn_text += event
+                        total_response_text += event
                         yield event
                     elif isinstance(event, list) and all(
                         isinstance(tc, ToolCallObject) for tc in event
@@ -576,6 +746,8 @@ class BasicMemoryAgent(AgentInterface):
             else:
                 if current_turn_text:
                     self._add_message(current_turn_text, "assistant")
+                if total_response_text:
+                    self._remember_long_term(input_data, total_response_text)
                 return
 
     def _chat_function_factory(
@@ -597,8 +769,10 @@ class BasicMemoryAgent(AgentInterface):
             """Process chat with memory and tools."""
             self.reset_interrupt()
             self.prompt_mode_flag = False
+            self._activate_routed_llm(input_data)
 
             messages = self._to_messages(input_data)
+            system_prompt = self._effective_system_prompt(input_data)
             tools = None
             tool_mode = None
             llm_supports_native_tools = False
@@ -628,7 +802,7 @@ class BasicMemoryAgent(AgentInterface):
                     f"Starting Claude tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._claude_tool_interaction_loop(
-                    messages, tools if tools else []
+                    messages, tools if tools else [], system_prompt, input_data
                 ):
                     yield output
                 return
@@ -637,13 +811,13 @@ class BasicMemoryAgent(AgentInterface):
                     f"Starting OpenAI tool interaction loop with {len(tools)} tools."
                 )
                 async for output in self._openai_tool_interaction_loop(
-                    messages, tools if tools else []
+                    messages, tools if tools else [], system_prompt, input_data
                 ):
                     yield output
                 return
             else:
                 logger.info("Starting simple chat completion.")
-                token_stream = self._llm.chat_completion(messages, self._system)
+                token_stream = self._llm.chat_completion(messages, system_prompt)
                 complete_response = ""
                 async for event in token_stream:
                     text_chunk = ""
@@ -658,6 +832,7 @@ class BasicMemoryAgent(AgentInterface):
                         complete_response += text_chunk
                 if complete_response:
                     self._add_message(complete_response, "assistant")
+                    self._remember_long_term(input_data, complete_response)
 
         return chat_with_memory
 
